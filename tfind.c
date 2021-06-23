@@ -4,11 +4,14 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <time.h>
 pthread_mutex_t mutex;
-char queue[20][80]; 
+char queue[16][80]; 
 int front=-1, rear=-1;
+int file_count = 0;
+int word_count = 0;
 int put (char val[80]) { 
-	if (rear >= 19) { 
+	if (rear >= 15) { 
 		if (!(rear-front)) { 
 			return -1; 
 		}  
@@ -43,23 +46,39 @@ void *threaded_task(void *t){
 	pthread_mutex_unlock(&mutex);
 	return 0;
 }
+int routine =0;
 int main(int argc, char* argv[]){
-	int result;
+	clock_t start, end;
+	float time;
+		int result;
 	find_dir(argv[3]);
-
+	if(atoi(argv[2])>16){
+		printf("number of threads is not over 16.\n");
+		exit(1);
+	} 
 	int num_threads = atoi(argv[2]);
 	pthread_t thread[num_threads];
+	start=clock();
 	while(1){
 		if(front == rear) break;
+		sleep(1);
 		for(int i =0; i<num_threads; i++){
 			if(front == rear) break;
+			routine++;
 			pthread_create(&thread[i], NULL, threaded_task, (void *)argv[4]);
+			if(routine == file_count) break;
 		}
-		for(int i=0; i<num_threads; i++){
+			for(int i=0; i<num_threads; i++){
 			pthread_join(thread[i],(void*)&result);
 		}
 	}	
-		return 0;
+	end = clock();
+	time = (float)(end - start)/1000;
+	printf("\n-----------------------------------------------------------------\n");
+	printf("The total number of the regular text files : %d\n",file_count);
+	printf("The total number of found lines: %d\n",word_count);
+	printf("The sum of all execution time: %.3fs\n\n",time);
+	return 0;
 }
 void find_dir(char path_name[100]){
 	DIR *dir_info;
@@ -80,11 +99,9 @@ void find_dir(char path_name[100]){
 			} else {
 				strcpy(addpath,"");
 				sprintf(addpath,"%s/%s",path,dir_entry->d_name);
-				//printf("Path: %s\n",path);
 				put(addpath);
+				file_count++;
 			}			
-			
-		 
 		}
 		closedir(dir_info);
 	}
@@ -105,13 +122,11 @@ void search_keyword(char filename[100], char word[100]){
 		num++;
 		if(strstr(line, word)!=NULL){
 			sprintf(result,"%s:%d:%s",filename,num,line);
-			//result[strlen(result)-1] = '\0';
 			printf("%s\n",result);
+			word_count++;
 		}
 	}
 	fclose(fp);
-
-	
 }
 
 
